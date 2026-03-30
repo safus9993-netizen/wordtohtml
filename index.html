@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Word → 網頁內容轉換器</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: rgba(255,255,255,0.08);
+      --accent: #6366f1;
+      --accent2: #818cf8;
+      --accent-glow: rgba(99,102,241,0.25);
+      --green: #22c55e;
+      --green-glow: rgba(34,197,94,0.2);
+      --text: #e2e8f0;
+      --text-muted: #64748b;
+      --text-dim: #94a3b8;
+      --radius: 16px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ─── Header ─── */
+    header {
+      width: 100%;
+      padding: 24px 40px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(26,29,39,0.8);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo-icon {
+      width: 42px; height: 42px;
+      background: linear-gradient(135deg, var(--accent), #ec4899);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 4px 20px var(--accent-glow);
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      background: linear-gradient(90deg, #e2e8f0, var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    header p {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+
+    /* ─── Main Layout ─── */
+    main {
+      width: 100%;
+      max-width: 960px;
+      padding: 40px 24px 80px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    /* ─── Step Badge ─── */
+    .step-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent2);
+      margin-bottom: 12px;
+    }
+
+    .step-num {
+      width: 22px; height: 22px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem;
+      color: #fff;
+      font-weight: 700;
+    }
+
+    /* ─── Drop Zone ─── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    #drop-zone {
+      border: 2px dashed rgba(99,102,241,0.35);
+      border-radius: 14px;
+      padding: 52px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: all .25s;
+      background: rgba(99,102,241,0.04);
+    }
+
+    #drop-zone:hover, #drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(99,102,241,0.1);
+      box-shadow: 0 0 32px var(--accent-glow);
+    }
+
+    #drop-zone .icon {
+      font-size: 2.8rem;
+      filter: drop-shadow(0 0 12px rgba(99,102,241,0.5));
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+
+    #drop-zone h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    #drop-zone p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .btn-upload {
+      margin-top: 6px;
+      background: linear-gradient(135deg, var(--accent), #818cf8);
+      color: #fff;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity .2s, transform .15s;
+      box-shadow: 0 4px 16px var(--accent-glow);
+    }
+
+    .btn-upload:hover { opacity: 0.88; transform: translateY(-1px); }
+    #file-input { display: none; }
+
+    /* ─── File Info ─── */
+    #file-info {
+      display: none;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 20px;
+      background: var(--surface2);
+      border-radius: 12px;
+      border: 1px solid rgba(34,197,94,0.25);
+      margin-top: 16px;
+    }
+
+    #file-info .file-icon { font-size: 1.8rem; }
+
+    #file-info .details { flex: 1; }
+    #file-info .details strong { font-size: 0.9rem; color: var(--green); }
+    #file-info .details span { font-size: 0.75rem; color: var(--text-muted); display: block; }
+
+    #convert-btn {
+      background: linear-gradient(135deg, var(--green), #16a34a);
+      color: #fff;
+      border: none;
+      padding: 10px 22px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity .2s, transform .15s;
+      box-shadow: 0 4px 16px var(--green-glow);
+      white-space: nowrap;
+    }
+
+    #convert-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+
+    /* ─── Output Section ─── */
+    #output-section { display: none; }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .toolbar-left { display: flex; align-items: center; gap: 10px; }
+
+    .tab-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 7px 16px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all .2s;
+    }
+
+    .tab-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 10px var(--accent-glow);
+    }
+
+    .copy-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, var(--accent), #818cf8);
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 9px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity .2s, transform .15s;
+      box-shadow: 0 3px 14px var(--accent-glow);
+    }
+
+    .copy-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+    .copy-btn.copied { background: linear-gradient(135deg, var(--green), #16a34a); box-shadow: 0 3px 14px var(--green-glow); }
+
+    /* ─── Preview Panel ─── */
+    #preview-panel {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 36px 40px;
+      min-height: 300px;
+      color: #1a1a1a;
+      line-height: 1.75;
+      font-size: 15px;
+      font-family: 'Noto Sans TC', 'Georgia', serif;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+      overflow-x: auto;        /* ← 防止內容整體超寬 */
+      word-break: break-word;
+    }
+
+    /* Word content styles inside preview */
+    #preview-panel h1 { font-size: 1.9em; font-weight: 700; margin: 0.5em 0 0.4em; color: #111; }
+    #preview-panel h2 { font-size: 1.5em; font-weight: 700; margin: 1em 0 0.4em; color: #111; border-bottom: 2px solid #e5e7eb; padding-bottom: 6px; }
+    #preview-panel h3 { font-size: 1.2em; font-weight: 600; margin: 0.9em 0 0.3em; color: #222; }
+    #preview-panel h4, #preview-panel h5, #preview-panel h6 { font-size: 1em; font-weight: 600; margin: 0.8em 0 0.3em; }
+    #preview-panel p { margin: 0.5em 0; }
+    #preview-panel ul, #preview-panel ol { margin: 0.5em 0 0.5em 1.6em; }
+    #preview-panel li { margin: 0.3em 0; }
+    #preview-panel strong, #preview-panel b { font-weight: 700; }
+    #preview-panel em, #preview-panel i { font-style: italic; }
+    #preview-panel u { text-decoration: underline; }
+
+    /* 表格：縮放適應容器寬度，文字自動換行 */
+    #preview-panel table { border-collapse: collapse; width: 100%; max-width: 100%; table-layout: fixed; margin: 1em 0; }
+    #preview-panel td, #preview-panel th { border: 1px solid #d1d5db; padding: 8px 12px; text-align: left; vertical-align: top; word-break: break-word; }
+    #preview-panel th { background: #f3f4f6; font-weight: 600; }
+    #preview-panel tr:nth-child(even) td { background: #f9fafb; }
+    #preview-panel a { color: #4f46e5; text-decoration: underline; }
+    #preview-panel img { max-width: 100%; height: auto; border-radius: 6px; display: block; margin: 8px 0; }
+    #preview-panel blockquote { border-left: 4px solid #6366f1; margin: 1em 0; padding: 8px 16px; background: #f5f3ff; color: #4b5563; }
+    #preview-panel hr { border: none; border-top: 2px solid #e5e7eb; margin: 1.2em 0; }
+
+    /* ─── HTML Source Panel ─── */
+    #html-panel {
+      display: none;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      min-height: 300px;
+      max-height: 560px;
+      overflow-y: auto;
+    }
+
+    #html-source {
+      font-family: 'Fira Code', 'Consolas', monospace;
+      font-size: 0.8rem;
+      line-height: 1.65;
+      color: #a5b4fc;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin: 0;
+    }
+
+    /* ─── Tips ─── */
+    .tips {
+      background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(129,140,248,0.05));
+      border: 1px solid rgba(99,102,241,0.2);
+      border-radius: 12px;
+      padding: 18px 22px;
+    }
+
+    .tips h3 { font-size: 0.85rem; font-weight: 600; color: var(--accent2); margin-bottom: 10px; }
+
+    .tips ul { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+
+    .tips li {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      display: flex;
+      gap: 8px;
+    }
+
+    .tips li::before { content: '✦'; color: var(--accent); flex-shrink: 0; }
+
+    /* ─── Toast ─── */
+    #toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--green);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 8px 30px var(--green-glow);
+      transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+      z-index: 1000;
+      pointer-events: none;
+    }
+
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ─── Spinner ─── */
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2.5px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #convert-btn.loading .spinner { display: inline-block; }
+    #convert-btn.loading .btn-text { display: none; }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 600px) {
+      header { padding: 16px 20px; }
+      main { padding: 24px 16px 60px; }
+      #preview-panel { padding: 20px; }
+      .toolbar { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-icon">📝</div>
+  <h1>Word → 網頁內容</h1>
+  <p>上傳 .docx · 複製 · 貼入 Email</p>
+</header>
+
+<main>
+
+  <!-- Step 1: Upload -->
+  <div class="card">
+    <div class="step-label"><span class="step-num">1</span>上傳 Word 文件</div>
+
+    <div id="drop-zone">
+      <div class="icon">📄</div>
+      <h2>拖曳 .docx 檔案到這裡</h2>
+      <p>或點擊下方按鈕選擇檔案</p>
+      <button class="btn-upload" onclick="document.getElementById('file-input').click()">選擇檔案</button>
+      <input type="file" id="file-input" accept=".docx" />
+    </div>
+
+    <div id="file-info">
+      <div class="file-icon">📋</div>
+      <div class="details">
+        <strong id="file-name">document.docx</strong>
+        <span id="file-size">0 KB</span>
+      </div>
+      <button id="convert-btn" onclick="convertFile()">
+        <span class="btn-text">⚡ 轉換</span>
+        <span class="spinner"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Step 2: Output -->
+  <div id="output-section">
+    <div class="step-label"><span class="step-num">2</span>轉換結果 — 複製後貼入 Email 或學校編輯器</div>
+
+    <div class="card">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <button class="tab-btn active" id="tab-preview" onclick="switchTab('preview')">👁 預覽</button>
+          <button class="tab-btn" id="tab-html" onclick="switchTab('html')">🖥 HTML 原始碼</button>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="copy-btn" id="copy-rich" onclick="copyRich()">📋 複製格式內容（貼入 Email）</button>
+          <button class="copy-btn" id="copy-html" onclick="copyHtml()">📄 複製 HTML 原始碼</button>
+        </div>
+      </div>
+
+      <div id="preview-panel"></div>
+      <pre id="html-panel"><code id="html-source"></code></pre>
+    </div>
+  </div>
+
+  <!-- Tips -->
+  <div class="tips">
+    <h3>💡 使用提示</h3>
+    <ul>
+      <li>支援 Word 的標題、粗體、斜體、條列、表格、超連結等格式</li>
+      <li>「複製格式內容」後直接貼入 Gmail、Outlook 等 Email 編輯器，格式完整保留</li>
+      <li>若學校編輯器支援貼上 HTML，可使用「複製 HTML 原始碼」</li>
+      <li>圖片會直接嵌入（base64），無需額外上傳</li>
+      <li>所有處理都在您的電腦上完成，不會上傳到任何伺服器</li>
+    </ul>
+  </div>
+
+</main>
+
+<div id="toast">✓ 已複製到剪貼簿！</div>
+
+<script>
+  let currentHtml = '';
+  let currentFile = null;
+
+  // ─── Drag & Drop ───
+  const dropZone = document.getElementById('drop-zone');
+
+  dropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+  });
+
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  });
+
+  document.getElementById('file-input').addEventListener('change', e => {
+    if (e.target.files[0]) handleFile(e.target.files[0]);
+    // ✅ 清空 value，讓同一個檔案下次還可以再選
+    e.target.value = '';
+  });
+
+  // ─── Handle File ───
+  function handleFile(file) {
+    if (!file.name.toLowerCase().endsWith('.docx')) {
+      showToast('⚠️ 請上傳 .docx 格式的 Word 文件', '#ef4444');
+      return;
+    }
+    currentFile = file;
+    document.getElementById('file-name').textContent = file.name;
+    document.getElementById('file-size').textContent = (file.size / 1024).toFixed(1) + ' KB';
+    document.getElementById('file-info').style.display = 'flex';
+  }
+
+  // ─── Convert ───
+  function convertFile() {
+    if (!currentFile) return;
+
+    const btn = document.getElementById('convert-btn');
+    btn.classList.add('loading');
+
+    const reader = new FileReader();
+    reader.onload = async e => {
+      try {
+        const arrayBuffer = e.target.result;
+
+        // ① mammoth 純同步轉換，圖片就先直接輸出 base64
+        const result = await mammoth.convertToHtml(
+          { arrayBuffer },
+          {
+            convertImage: mammoth.images.imgElement(function(image) {
+              return image.read('base64').then(function(base64Data) {
+                return {
+                  src: 'data:' + image.contentType + ';base64,' + base64Data
+                };
+              });
+            }),
+            styleMap: [
+              "p[style-name='Heading 1'] => h1",
+              "p[style-name='Heading 2'] => h2",
+              "p[style-name='Heading 3'] => h3",
+              "p[style-name='Heading 4'] => h4",
+              "p[style-name='標題 1'] => h1",
+              "p[style-name='標題 2'] => h2",
+              "p[style-name='標題 3'] => h3",
+              "b => strong",
+              "i => em",
+            ]
+          }
+        );
+
+        // ② 轉換完成後，再非同步對圖片縮圖 + 注入 inline style
+        currentHtml = await postProcess(result.value);
+
+        // ③ 顯示
+        document.getElementById('preview-panel').innerHTML = currentHtml;
+        const displayHtml = currentHtml.replace(
+          /(src="data:[^;]+;base64,)[A-Za-z0-9+/=]{60,}/g,
+          '$1[圖片資料已隱藏，轉換時完整保留]'
+        );
+        document.getElementById('html-source').textContent = formatHtml(displayHtml);
+        document.getElementById('output-section').style.display = 'block';
+
+        setTimeout(() => {
+          document.getElementById('output-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+
+        showToast('✓ 轉換完成！');
+      } catch (err) {
+        console.error('轉換錯誤:', err);
+        showToast('❌ 轉換失敗：' + (err.message || '請確認是 .docx 格式'), '#ef4444');
+      } finally {
+        btn.classList.remove('loading');
+      }
+    };
+    reader.readAsArrayBuffer(currentFile);
+  }
+
+  // ─── 後處理：圖片縮圖 + 注入 inline style ───
+  async function postProcess(html) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString('<div id="__root">' + html + '</div>', 'text/html');
+    const root = doc.getElementById('__root');
+
+    // —— 圖片：用 Canvas 縮小到最寬 560px ——
+    const imgs = Array.from(root.querySelectorAll('img'));
+    await Promise.all(imgs.map(imgEl => resizeImg(imgEl)));
+
+    // —— 表格 inline style ——
+    root.querySelectorAll('table').forEach(el => {
+      el.style.cssText = 'border-collapse:collapse;width:100%;max-width:100%;table-layout:fixed;font-size:14px;margin:12px 0;';
+    });
+    root.querySelectorAll('th').forEach(el => {
+      el.style.cssText = 'border:1px solid #d1d5db;padding:8px 12px;background:#f3f4f6;font-weight:700;text-align:left;vertical-align:top;word-break:break-word;';
+    });
+    root.querySelectorAll('td').forEach(el => {
+      el.style.cssText = 'border:1px solid #d1d5db;padding:8px 12px;text-align:left;vertical-align:top;word-break:break-word;';
+    });
+
+    // —— 標題 inline style ——
+    const hStyles = {
+      H1: 'font-size:1.8em;font-weight:700;margin:0.5em 0 0.4em;color:#111;',
+      H2: 'font-size:1.4em;font-weight:700;margin:1em 0 0.4em;color:#111;border-bottom:2px solid #e5e7eb;padding-bottom:6px;',
+      H3: 'font-size:1.2em;font-weight:600;margin:0.8em 0 0.3em;color:#222;',
+    };
+    Object.entries(hStyles).forEach(([tag, style]) =>
+      root.querySelectorAll(tag).forEach(el => el.style.cssText = style)
+    );
+
+    // —— 段落 ——
+    root.querySelectorAll('p').forEach(el => {
+      if (!el.style.margin) el.style.margin = '0.4em 0';
+    });
+
+    return root.innerHTML;
+  }
+
+  // ─── 實際縮圖單張圖片 ───
+  function resizeImg(imgEl) {
+    return new Promise(resolve => {
+      const MAX_W = 560;
+      const originalSrc = imgEl.getAttribute('src');
+      if (!originalSrc || !originalSrc.startsWith('data:')) return resolve();
+
+      const img = new Image();
+      const timer = setTimeout(() => resolve(), 8000);
+
+      img.onload = function() {
+        clearTimeout(timer);
+        try {
+          let w = img.naturalWidth, h = img.naturalHeight;
+          if (w > MAX_W) { h = Math.round(h * MAX_W / w); w = MAX_W; }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          imgEl.src = canvas.toDataURL('image/jpeg', 0.88);
+          imgEl.setAttribute('width', w);
+          imgEl.setAttribute('height', h);
+          imgEl.style.cssText = `width:${w}px;height:${h}px;max-width:100%;display:block;margin:8px 0;`;
+        } catch(e) {
+          console.warn('縮圖失敗，用原始', e);
+          imgEl.style.cssText = 'max-width:100%;height:auto;display:block;margin:8px 0;';
+        }
+        resolve();
+      };
+      img.onerror = function() { clearTimeout(timer); resolve(); };
+      img.src = originalSrc;
+    });
+  }
+
+  // ─── Tab Switch ───
+  function switchTab(tab) {
+    const isPreview = tab === 'preview';
+    document.getElementById('tab-preview').classList.toggle('active', isPreview);
+    document.getElementById('tab-html').classList.toggle('active', !isPreview);
+    document.getElementById('preview-panel').style.display = isPreview ? '' : 'none';
+    document.getElementById('html-panel').style.display = isPreview ? 'none' : 'block';
+  }
+
+  // ─── Copy Rich Text (for Email) ───
+  async function copyRich() {
+    if (!currentHtml) return;
+
+    // Build a styled full HTML blob for clipboard
+    const styledHtml = `
+      <div style="font-family:'Noto Sans TC',Arial,sans-serif;font-size:15px;line-height:1.75;color:#1a1a1a;max-width:700px;">
+        ${currentHtml}
+      </div>
+    `;
+
+    try {
+      const blob = new Blob([styledHtml], { type: 'text/html' });
+      const clipItems = [new ClipboardItem({ 'text/html': blob })];
+      await navigator.clipboard.write(clipItems);
+      flashBtn('copy-rich');
+      showToast('✓ 格式內容已複製，可直接貼入 Email！');
+    } catch {
+      // Fallback: copy plain
+      fallbackCopy(document.getElementById('preview-panel').innerText);
+    }
+  }
+
+  // ─── Copy HTML Source ───
+  async function copyHtml() {
+    if (!currentHtml) return;
+    try {
+      await navigator.clipboard.writeText(currentHtml);
+      flashBtn('copy-html');
+      showToast('✓ HTML 原始碼已複製！');
+    } catch {
+      fallbackCopy(currentHtml);
+    }
+  }
+
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('✓ 已複製！');
+  }
+
+  function flashBtn(id) {
+    const btn = document.getElementById(id);
+    btn.classList.add('copied');
+    setTimeout(() => btn.classList.remove('copied'), 2000);
+  }
+
+  // ─── Toast ───
+  let toastTimer;
+  function showToast(msg, color) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.style.background = color || 'var(--green)';
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
+  }
+
+  // ─── Format HTML ───
+  function formatHtml(html) {
+    let indent = 0;
+    return html
+      .replace(/></g, '>\n<')
+      .split('\n')
+      .map(line => {
+        line = line.trim();
+        if (!line) return '';
+        if (line.startsWith('</')) indent = Math.max(0, indent - 1);
+        const out = '  '.repeat(indent) + line;
+        if (!line.startsWith('</') && !line.endsWith('/>') && /<[^/][^>]*>/.test(line) && !/<\//.test(line)) indent++;
+        return out;
+      })
+      .filter(Boolean)
+      .join('\n');
+  }
+</script>
+</body>
+</html>
